@@ -9,12 +9,11 @@ int main() {
     printf("%*d ",2,a[i]);
   }
   printf("\n");
-#pragma omp parallel
   for(int j=1; j<N; j<<=1) {
-#pragma omp for
+#pragma omp parallel for
     for(int i=0; i<N; i++)
       b[i] = a[i];
-#pragma omp for
+#pragma omp parallel for
     for(int i=j; i<N; i++)
       a[i] += b[i-j];
   }

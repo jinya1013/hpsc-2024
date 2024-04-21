@@ -7,8 +7,8 @@ int main() {
 #pragma omp sections firstprivate(i)
   {
 #pragma omp section
-    printf("%d\n",++i);
+    printf("%d %d\n",++i, omp_get_thread_num());
 #pragma omp section
-    printf("%d\n",++i);
+    printf("%d %d\n",++i, omp_get_thread_num());
   }
 }
