@@ -19,6 +19,7 @@ int main() {
 #pragma omp parallel for
   for (int i=1; i<range; i++)
     offset[i] = bucket[i-1];
+    
   std::vector<int> tmp(range,0);
   for(int j=1; j<range; j<<=1) {
 #pragma omp parallel for
