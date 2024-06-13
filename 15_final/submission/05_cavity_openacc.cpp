@@ -68,7 +68,6 @@ void free_2d(double** array, int rows) {
 }
 
 int main() {
-    omp_set_num_threads(4);
     int nx = 40, ny = 40, nt = 500, nit = 50;
     double dx = 2.0 / (nx - 1), dy = 2.0 / (ny - 1), dt = 0.01;
     double rho = 1.0, nu = 0.02;
@@ -99,8 +98,8 @@ int main() {
     auto tic = chrono::steady_clock::now();
 
     for (int n = 0; n < nt; ++n) {
-        #pragma acc kernels {
         if (n % 2 == 0) {
+            #pragma acc kernels 
             for (int idx = 0; idx < (ny - 2) * (nx - 2); ++idx) {
                 int j = 1 + idx / (nx - 2);
                 int i = 1 + idx % (nx - 2);
@@ -110,6 +109,7 @@ int main() {
                         (v[j][i+1] - v[j][i-1]) / (2 * dx)) - ((v[j+1][i] - v[j-1][i]) / (2 * dy)) * ((v[j+1][i] - v[j-1][i]) / (2 * dy)));
             }
         } else {
+            #pragma acc kernels
             for (int idx = 0; idx < (ny - 2) * (nx - 2); ++idx) {
                 int j = 1 + idx / (nx - 2);
                 int i = 1 + idx % (nx - 2);
@@ -119,11 +119,10 @@ int main() {
                         (vn[j][i+1] - vn[j][i-1]) / (2 * dx)) - ((vn[j+1][i] - vn[j-1][i]) / (2 * dy)) * ((vn[j+1][i] - vn[j-1][i]) / (2 * dy)));
             }
         }
-        }
         
         for (int it = 0; it < nit; ++it) {
-            # pragma acc kernels {
             if (it % 2 != 0) {
+                # pragma acc kernels 
                 for (int idx = 0; idx < (ny - 2) * (nx - 2); ++idx) {
                     int j = 1 + idx / (nx - 2);
                     int i = 1 + idx % (nx - 2);
@@ -140,6 +139,7 @@ int main() {
                     p[ny - 1][i] = 0; 
                 }
             } else {
+                # pragma acc kernels 
                 for (int idx = 0; idx < (ny - 2) * (nx - 2); ++idx) {
                     int j = 1 + idx / (nx - 2);
                     int i = 1 + idx % (nx - 2);
@@ -156,10 +156,10 @@ int main() {
                     pn[ny - 1][i] = 0; 
                 }
             }
-            }
         }
-        # pragma acc kernels {
+        
         if (n % 2 != 0) {
+            # pragma acc kernels 
             for (int idx = 0; idx < (ny - 2) * (nx - 2); ++idx) {
                 int j = 1 + idx / (nx - 2);
                 int i = 1 + idx % (nx - 2);
@@ -184,6 +184,7 @@ int main() {
                 u[j][nx - 1] = v[j][nx - 1] = 0;
             }
         } else {
+            # pragma acc kernels 
             for (int idx = 0; idx < (ny - 2) * (nx - 2); ++idx) {
                 int j = 1 + idx / (nx - 2);
                 int i = 1 + idx % (nx - 2);
@@ -207,7 +208,6 @@ int main() {
                 un[j][0] = vn[j][0] = 0;
                 un[j][nx - 1] = vn[j][nx - 1] = 0;
             }
-        }
         }
     }
 
