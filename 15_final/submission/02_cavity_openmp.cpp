@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <chrono>
+#include <omp.h>
 using namespace std;
 
 void set_linspace(double* result, double start, double end, int num) {
@@ -27,14 +28,14 @@ void set_zeros2d(double** result, int rows, int cols) {
     }
 }
 
-double** allocate_2d_array(int rows, int cols) {
+double** allocate_2d(int rows, int cols) {
     double** array = (double**)malloc(rows * sizeof(double*));
     for (int i = 0; i < rows; ++i) {
         array[i] = (double*)malloc(cols * sizeof(double));
     }
     return array;
 }
-void print_2d_array(double** array, int rows, int cols) {
+void print_2d(double** array, int rows, int cols) {
     for (int i = 0; i < rows; ++i) {
         for (int j = 0; j < cols; ++j) {
             std::cout << array[i][j] << " ";
@@ -46,20 +47,20 @@ void print_2d_array(double** array, int rows, int cols) {
         }
     }
 }
-void print_1d_array(double* array, int size) {
+void print_1d(double* array, int size) {
     for (int i = 0; i < size; ++i) {
         std::cout << array[i] << " ";
     }
     std::cout << std::endl;
 }
 
-void copy_2d_array(double** src, double** dest, int rows, int cols) {
+void copy_2d(double** src, double** dest, int rows, int cols) {
     for (int i = 0; i < rows; ++i) {
         std::copy(src[i], src[i] + cols, dest[i]);
     }
 }
 
-void free_2d_array(double** array, int rows) {
+void free_2d(double** array, int rows) {
     for (int i = 0; i < rows; ++i) {
         free(array[i]);
     }
@@ -67,7 +68,8 @@ void free_2d_array(double** array, int rows) {
 }
 
 int main() {
-    int nx = 41, ny = 41, nt = 500, nit = 50;
+    omp_set_num_threads(4);
+    int nx = 40, ny = 40, nt = 500, nit = 50;
     double dx = 2.0 / (nx - 1), dy = 2.0 / (ny - 1), dt = 0.01;
     double rho = 1.0, nu = 0.02;
 
@@ -76,14 +78,14 @@ int main() {
     set_linspace(x, 0, 2, nx);
     set_linspace(y, 0, 2, ny);
 
-    double** u = allocate_2d_array(ny, nx);
-    double** v = allocate_2d_array(ny, nx);
-    double** p = allocate_2d_array(ny, nx);
-    double** b = allocate_2d_array(ny, nx);
+    double** u = allocate_2d(ny, nx);
+    double** v = allocate_2d(ny, nx);
+    double** p = allocate_2d(ny, nx);
+    double** b = allocate_2d(ny, nx);
 
-    double** un = allocate_2d_array(ny, nx);
-    double** vn = allocate_2d_array(ny, nx);
-    double** pn = allocate_2d_array(ny, nx);
+    double** un = allocate_2d(ny, nx);
+    double** vn = allocate_2d(ny, nx);
+    double** pn = allocate_2d(ny, nx);
 
     set_zeros2d(u, ny, nx);
     set_zeros2d(v, ny, nx);
@@ -128,17 +130,13 @@ int main() {
                         dx * dx * (pn[j+1][i] + pn[j-1][i]) -
                         b[j][i] * dx * dx * dy * dy) / (2 * (dx * dx + dy * dy));
                 }
-                for (int i = 0; i < ny; ++i) {
-                    p[i][nx - 1] = p[i][nx - 2];
+                for (int j = 0; j < ny; ++j) {
+                    p[j][0] = p[j][1]; 
+                    p[j][nx - 1] = p[j][nx - 2];
                 }
-                for (int j = 0; j < nx; ++j) {
-                    p[0][j] = p[1][j]; 
-                }
-                for (int i = 0; i < ny; ++i) {
-                    p[i][0] = p[i][1]; 
-                }
-                for (int j = 0; j < nx; ++j) {
-                    p[ny - 1][j] = 0; 
+                for (int i = 0; i < nx; ++i) {
+                    p[0][i] = p[1][i]; 
+                    p[ny - 1][i] = 0; 
                 }
             } else {
                 #pragma omp parallel for
@@ -149,17 +147,13 @@ int main() {
                         dx * dx * (p[j+1][i] + p[j-1][i]) -
                         b[j][i] * dx * dx * dy * dy) / (2 * (dx * dx + dy * dy));
                 }
-                for (int i = 0; i < ny; ++i) {
-                    pn[i][nx - 1] = pn[i][nx - 2];
+                for (int j = 0; j < ny; ++j) {
+                    pn[j][0] = pn[j][1]; 
+                    pn[j][nx - 1] = pn[j][nx - 2];
                 }
-                for (int j = 0; j < nx; ++j) {
-                    pn[0][j] = pn[1][j]; 
-                }
-                for (int i = 0; i < ny; ++i) {
-                    pn[i][0] = pn[i][1]; 
-                }
-                for (int j = 0; j < nx; ++j) {
-                    pn[ny - 1][j] = 0; 
+                for (int i = 0; i < nx; ++i) {
+                    pn[0][i] = pn[1][i]; 
+                    pn[ny - 1][i] = 0; 
                 }
             }
         }
@@ -179,21 +173,14 @@ int main() {
                                 + nu * dt / (dx*dx) * (vn[j][i+1] - 2 * vn[j][i] + vn[j][i-1])
                                 + nu * dt / (dy*dy) * (vn[j+1][i] - 2 * vn[j][i] + vn[j-1][i]);
             }
-            for (int j = 0; j < nx; ++j) {
-                u[0][j] = 0;
-                u[ny - 1][j] = 1;
+            for (int i = 0; i < nx; ++i) {
+                u[0][i] = v[0][i] = 0;
+                u[ny - 1][i] = 1;
+                v[ny - 1][i] = 0;
             }
-            for (int i = 0; i < ny; ++i) {
-                u[i][0] = 0;
-                u[i][nx - 1] = 0;
-            }
-            for (int j = 0; j < nx; ++j) {
-                v[0][j] = 0;
-                v[ny - 1][j] = 0;
-            }
-            for (int i = 0; i < ny; ++i) {
-                v[i][0] = 0;
-                v[i][nx - 1] = 0;
+            for (int j = 0; j < ny; ++j) {
+                u[j][0] = v[j][0] = 0;
+                u[j][nx - 1] = v[j][nx - 1] = 0;
             }
         } else {
             #pragma omp parallel for
@@ -211,21 +198,14 @@ int main() {
                                 + nu * dt / (dx*dx) * (v[j][i+1] - 2 * v[j][i] + v[j][i-1])
                                 + nu * dt / (dy*dy) * (v[j+1][i] - 2 * v[j][i] + v[j-1][i]);
             }
-            for (int j = 0; j < nx; ++j) {
-                un[0][j] = 0;
-                un[ny - 1][j] = 1;
+            for (int i = 0; i < nx; ++i) {
+                un[0][i] = vn[0][i] = 0;
+                un[ny - 1][i] = 1;
+                vn[ny - 1][i] = 0;
             }
-            for (int i = 0; i < ny; ++i) {
-                un[i][0] = 0;
-                un[i][nx - 1] = 0;
-            }
-            for (int j = 0; j < nx; ++j) {
-                vn[0][j] = 0;
-                vn[ny - 1][j] = 0;
-            }
-            for (int i = 0; i < ny; ++i) {
-                vn[i][0] = 0;
-                vn[i][nx - 1] = 0;
+            for (int j = 0; j < ny; ++j) {
+                un[j][0] = vn[j][0] = 0;
+                un[j][nx - 1] = vn[j][nx - 1] = 0;
             }
         }
     }
@@ -234,19 +214,19 @@ int main() {
     double time = chrono::duration<double>(toc - tic).count();
 
     std::cout << "u" << std::endl;
-    print_2d_array(u, ny, nx);
+    print_2d(u, ny, nx);
     std::cout << "v" << std::endl;
-    print_2d_array(v, ny, nx);
+    print_2d(v, ny, nx);
 
     std::cout << "time: " << time << "s" << std::endl;
 
-    free_2d_array(u, ny);
-    free_2d_array(v, ny);
-    free_2d_array(p, ny);
-    free_2d_array(b, ny);
-    free_2d_array(un, ny);
-    free_2d_array(vn, ny);
-    free_2d_array(pn, ny);
+    free_2d(u, ny);
+    free_2d(v, ny);
+    free_2d(p, ny);
+    free_2d(b, ny);
+    free_2d(un, ny);
+    free_2d(vn, ny);
+    free_2d(pn, ny);
 
     return 0;
 }

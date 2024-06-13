@@ -4,6 +4,21 @@
 #include <chrono>
 using namespace std;
 
+void set_linspace(double* result, double start, double end, int num) {
+    if (num <= 0) {
+        return;
+    }
+    if (num == 1) {
+        result[0] = start;
+        return;
+    }
+
+    double step = (end - start) / (num - 1);
+    for (int i = 0; i < num; ++i) {
+        result[i] = start + step * i;
+    }
+}
+
 void set_zeros2d(double** result, int rows, int cols) {
     for (int i = 0; i < rows; ++i) {
         for (int j = 0; j < cols; ++j) {
@@ -12,14 +27,14 @@ void set_zeros2d(double** result, int rows, int cols) {
     }
 }
 
-double** allocate_2d_array(int rows, int cols) {
+double** allocate_2d(int rows, int cols) {
     double** array = (double**)malloc(rows * sizeof(double*));
     for (int i = 0; i < rows; ++i) {
         array[i] = (double*)malloc(cols * sizeof(double));
     }
     return array;
 }
-void print_2d_array(double** array, int rows, int cols) {
+void print_2d(double** array, int rows, int cols) {
     for (int i = 0; i < rows; ++i) {
         for (int j = 0; j < cols; ++j) {
             std::cout << array[i][j] << " ";
@@ -31,20 +46,20 @@ void print_2d_array(double** array, int rows, int cols) {
         }
     }
 }
-void print_1d_array(double* array, int size) {
+void print_1d(double* array, int size) {
     for (int i = 0; i < size; ++i) {
         std::cout << array[i] << " ";
     }
     std::cout << std::endl;
 }
 
-void copy_2d_array(double** src, double** dest, int rows, int cols) {
+void copy_2d(double** src, double** dest, int rows, int cols) {
     for (int i = 0; i < rows; ++i) {
         std::copy(src[i], src[i] + cols, dest[i]);
     }
 }
 
-void free_2d_array(double** array, int rows) {
+void free_2d(double** array, int rows) {
     for (int i = 0; i < rows; ++i) {
         free(array[i]);
     }
@@ -52,18 +67,23 @@ void free_2d_array(double** array, int rows) {
 }
 
 int main() {
-    int nx = 40, ny = 40, nt = 500, nit = 50;
+    int nx = 41, ny = 41, nt = 500, nit = 50;
     double dx = 2.0 / (nx - 1), dy = 2.0 / (ny - 1), dt = 0.01;
     double rho = 1.0, nu = 0.02;
 
-    double** u = allocate_2d_array(ny, nx);
-    double** v = allocate_2d_array(ny, nx);
-    double** p = allocate_2d_array(ny, nx);
-    double** b = allocate_2d_array(ny, nx);
+    double x[nx], y[ny];
 
-    double** un = allocate_2d_array(ny, nx);
-    double** vn = allocate_2d_array(ny, nx);
-    double** pn = allocate_2d_array(ny, nx);
+    set_linspace(x, 0, 2, nx);
+    set_linspace(y, 0, 2, ny);
+
+    double** u = allocate_2d(ny, nx);
+    double** v = allocate_2d(ny, nx);
+    double** p = allocate_2d(ny, nx);
+    double** b = allocate_2d(ny, nx);
+
+    double** un = allocate_2d(ny, nx);
+    double** vn = allocate_2d(ny, nx);
+    double** pn = allocate_2d(ny, nx);
 
     set_zeros2d(u, ny, nx);
     set_zeros2d(v, ny, nx);
@@ -82,7 +102,7 @@ int main() {
             }
         }
         for (int it = 0; it < nit; ++it) {
-            copy_2d_array(p, pn, ny, nx);
+            copy_2d(p, pn, ny, nx);
             for (int j = 1; j < ny - 1; ++j) {
                 for (int i = 1; i < nx - 1; ++i) {
                     p[j][i] = (dy * dy * (pn[j][i+1] + pn[j][i-1]) + 
@@ -90,17 +110,21 @@ int main() {
                         b[j][i] * dx * dx * dy * dy) / (2 * (dx * dx + dy * dy));
                 }
             }
-            for (int j = 0; j < ny; ++j) {
-                p[j][0] = p[j][1]; 
-                p[j][nx - 1] = p[j][nx - 2];
+            for (int i = 0; i < ny; ++i) {
+                p[i][nx - 1] = p[i][nx - 2];
             }
-            for (int i = 0; i < nx; ++i) {
-                p[0][i] = p[1][i]; 
-                p[ny - 1][i] = 0; 
+            for (int j = 0; j < nx; ++j) {
+                p[0][j] = p[1][j]; 
+            }
+            for (int i = 0; i < ny; ++i) {
+                p[i][0] = p[i][1]; 
+            }
+            for (int j = 0; j < nx; ++j) {
+                p[ny - 1][j] = 0; 
             }
         }
-        copy_2d_array(u, un, ny, nx);
-        copy_2d_array(v, vn, ny, nx);
+        copy_2d(u, un, ny, nx);
+        copy_2d(v, vn, ny, nx);
         for (int j = 1; j < ny - 1; ++j) {
             for (int i = 1; i < nx - 1; ++i) {
                 u[j][i] = un[j][i] - un[j][i] * dt / dx * (un[j][i] - un[j][i-1])
@@ -115,35 +139,47 @@ int main() {
                                 + nu * dt / (dy*dy) * (vn[j+1][i] - 2 * vn[j][i] + vn[j-1][i]);
             }
         }
-        for (int i = 0; i < nx; ++i) {
-            u[0][i] = v[0][i] = 0;
-            u[ny - 1][i] = 1;
-            v[ny - 1][i] = 0;
+        for (int j = 0; j < nx; ++j) {
+            u[0][j] = 0;
+            u[ny - 1][j] = 1;
         }
-        for (int j = 0; j < ny; ++j) {
-            u[j][0] = v[j][0] = 0;
-            u[j][nx - 1] = v[j][nx - 1] = 0;
+        for (int i = 0; i < ny; ++i) {
+            u[i][0] = 0;
+            u[i][nx - 1] = 0;
+        }
+        for (int j = 0; j < nx; ++j) {
+            v[0][j] = 0;
+            v[ny - 1][j] = 0;
+        }
+        for (int i = 0; i < ny; ++i) {
+            v[i][0] = 0;
+            v[i][nx - 1] = 0;
         }
     }
 
     auto toc = chrono::steady_clock::now();
     double time = chrono::duration<double>(toc - tic).count();
 
+    // std::cout << "x" << std::endl;
+    // print_1d(x, nx);
+    // std::cout << "y" << std::endl;
+    // print_1d(y, ny);
+
     std::cout << "u" << std::endl;
-    print_2d_array(u, ny, nx);
+    print_2d(u, ny, nx);
     std::cout << "v" << std::endl;
-    print_2d_array(v, ny, nx);
+    print_2d(v, ny, nx);
 
     std::cout << "time: " << time << "s" << std::endl;
 
 
-    free_2d_array(u, ny);
-    free_2d_array(v, ny);
-    free_2d_array(p, ny);
-    free_2d_array(b, ny);
-    free_2d_array(un, ny);
-    free_2d_array(vn, ny);
-    free_2d_array(pn, ny);
+    free_2d(u, ny);
+    free_2d(v, ny);
+    free_2d(p, ny);
+    free_2d(b, ny);
+    free_2d(un, ny);
+    free_2d(vn, ny);
+    free_2d(pn, ny);
 
     return 0;
 }
