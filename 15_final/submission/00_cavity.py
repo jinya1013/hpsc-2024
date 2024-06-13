@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-nx = 41
-ny = 41
+nx = 40
+ny = 40
 nt = 500
 nit = 50
 dx = 2 / (nx - 1)

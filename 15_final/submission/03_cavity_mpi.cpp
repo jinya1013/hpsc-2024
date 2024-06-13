@@ -28,8 +28,6 @@ int main(int argc, char** argv) {
     double u[ny*nx], v[ny*nx], p[ny*nx], b[ny*nx];
     double un[ny*nx], vn[ny*nx], pn[ny*nx];
 
-    std::cout << size << " " << rank << " " << begin << " " << end << " " << ny * nx << "\n";
-
     for (int idx = 0; idx < ny * nx; ++idx) {
         u[idx] = v[idx] = p[idx] = b[idx] = un[idx] = vn[idx] = pn[idx] = 0;
     }
